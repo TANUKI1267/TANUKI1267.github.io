@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>순애남 테스트</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
+<style>
+:root{
+  --paper:#EAF0FA; --card:#FFFFFF; --ink:#1B2A5C; --mute:#66708F; --rose:#E4466B; --rose-soft:#FCE3EA; --line:#CBD6EC;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--paper:#121A33; --card:#1B2547; --ink:#EDF1FF; --mute:#9AA5C8; --rose:#FF6E8E; --rose-soft:#3A2440; --line:#2E3A66;}
+}
+:root[data-theme="dark"]{--paper:#121A33; --card:#1B2547; --ink:#EDF1FF; --mute:#9AA5C8; --rose:#FF6E8E; --rose-soft:#3A2440; --line:#2E3A66;}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.6;min-height:100vh;display:flex;justify-content:center;padding:24px 16px}
+main{width:100%;max-width:460px}
+h1,h2,.serif{font-family:"Gowun Batang","Nanum Myeongjo",serif;font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 24px}
+.hidden{display:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--rose);outline-offset:2px}
+
+/* 시작 화면: 편지 한 장 */
+.letter-title{font-size:2.6rem;line-height:1.2;margin:8px 0 16px;letter-spacing:-.02em}
+.letter-title em{font-style:normal;color:var(--rose)}
+.lede{color:var(--mute);margin:0 0 28px}
+.primary{width:100%;background:var(--rose);color:#fff;border:0;border-radius:12px;padding:14px;font-size:1.05rem}
+.primary:active{transform:scale(.98)}
+.ghost{width:100%;background:transparent;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;color:var(--ink)}
+
+/* 질문 */
+.progress{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.progress>i{display:block;height:100%;width:0;background:var(--rose);transition:width .3s}
+.count{color:var(--mute);font-size:.9rem;margin-bottom:18px}
+.q{font-size:1.35rem;line-height:1.45;margin:0 0 20px}
+.opt{display:block;width:100%;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.opt:hover{border-color:var(--rose)}
+.opt.picked{background:var(--rose-soft);border-color:var(--rose)}
+
+/* 결과 */
+.meter{font-family:"Gowun Batang",serif;font-size:4.2rem;font-weight:700;color:var(--rose);line-height:1;margin:6px 0}
+.meter small{font-size:1.6rem;color:var(--ink)}
+.type{font-size:1.5rem;margin:6px 0 12px}
+.desc{margin:0 0 16px}
+.tip{background:var(--rose-soft);border-radius:12px;padding:12px 14px;font-size:.95rem;margin-bottom:20px}
+.face{font-size:4.5rem;line-height:1;margin-bottom:8px}
+.card.bad{border-color:var(--rose);background:var(--rose-soft)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:.9rem;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <section id="start" class="card">
+    <p style="color:var(--mute);margin:0">10문항 · 성인 대상 문항 포함</p>
+    <h1 class="letter-title">나는 진짜<br><em>순애남</em>일까?</h1>
+    <p class="lede">10문항에 솔직하게 답해보세요. 만점은 30점입니다.</p>
+    <button class="primary" id="startBtn">테스트 시작하기</button>
+  </section>
+
+  <section id="quiz" class="card hidden">
+    <div class="progress"><i id="bar"></i></div>
+    <div class="count" id="count"></div>
+    <h2 class="q" id="qText"></h2>
+    <div id="opts"></div>
+  </section>
+
+  <section id="result" class="card hidden">
+    <div class="face" id="face" aria-hidden="true"></div>
+    <div style="color:var(--mute)">최종 점수</div>
+    <div class="meter"><span id="pct"></span><small>/ 30점</small></div>
+    <h2 class="type" id="rType"></h2>
+    <p class="desc" id="rDesc"></p>
+    <button class="primary" id="shareBtn">결과 공유하기</button>
+    <button class="ghost" id="retryBtn">다시 하기</button>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// 선택지 순서(1번,2번,3번)에 대응하는 점수. 순서를 바꾸려면 이 한 줄만 고치면 됩니다.
+const POINTS=[1,2,3];
+const QUESTIONS = [
+  {q:"나는 여자친구가 있을 때에 다른 여자에게 설레어 보았다", o:[["매우 그렇다"],["부정 하고싶다"],["아니다"]]},
+  {q:"나는 한번이라도 환승연애를 한 적이 있다 (헤어지고 2주내를 기준으로 함)", o:[["매우 그렇다"],["어쩌다보니 타이밍이 그랬다",true],["아니다"]]},
+  {q:"나는 한번이라도 바람을 계획 한 적이 있다", o:[["매우 그렇다"],["그랬던 것 같다"],["아니다"]]},
+  {q:"나는 NTR이나 다수플레이에 흥미가 있다", o:[["매우 그렇다"],["좀 꼴린다",true],["아니다"]]},
+  {q:"나는 연예인을 팬심 이상으로 좋아 한 적이 있다", o:[["매우 그렇다"],["사인은 가지고싶다"],["아니다"]]},
+  {q:"나는 육체적바람은 괜찮다고 생각한다", o:[["매우 그렇다"],["속궁합은 별개의 문제다",true],["아니다"]]},
+  {q:"나는 이성친구와 1:1로 만나서 논 적이 있다 (애인이 있을 때 기준)", o:[["매우 그렇다"],["안 걸렸다"],["아니다"]]},
+  {q:"나는 여자친구가 있는 상태에서 성인용품을 사용 해 보았다", o:[["매우 그렇다"],["내 손이 성인용품이다"],["여자친구와 하는게 아니면 금욕한다"]]},
+  {q:"나는 임자가 있는 사람한테 개수작을 건 적이 있다", o:[["매우 그렇다"],["어떻게 하나의 반찬만 먹고 사나?",true],["아니다"]]},
+  {q:"나는 과격한 성적취향이 있다", o:[["매우 그렇다"],["나 정도면 소프트하다"],["아니다"]]}
+];
+const BAD_LINE="너 같은 인간 쓰레기는 사랑 같은거 하지 마라";
+const RESULTS = [
+  {min:25, type:"당신은 진정한 순애남입니다."},
+  {min:18, type:"당신은 순애남이 되려면 멀었습니다."},
+  {min:0,  type:"당신은 순애를 논하지 마십시오."}
+];
+let idx=0, total=0, picks=[];
+const $=id=>document.getElementById(id);
+function show(id){["start","quiz","result"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
+function render(){
+  const item=QUESTIONS[idx];
+  $("bar").style.width=(idx/QUESTIONS.length*100)+"%";
+  $("count").textContent=(idx+1)+" / "+QUESTIONS.length;
+  $("qText").textContent=item.q;
+  const box=$("opts"); box.innerHTML="";
+  item.o.forEach(([text,bad],i)=>{
+    const b=document.createElement("button"); b.className="opt"; b.type="button"; b.textContent=text;
+    b.onclick=()=>{
+      b.classList.add("picked"); total+=POINTS[i];
+      setTimeout(()=>{ if(bad) finish(true); else next(); },180);
+    };
+    box.appendChild(b);
+  });
+}
+function next(){ idx++; if(idx>=QUESTIONS.length) finish(false); else render(); }
+function finish(bad){
+  // 배드엔딩이면 이후 문항은 0점이므로 여기서 점수를 확정합니다.
+  $("pct").textContent=total;
+  $("result").classList.toggle("bad",bad);
+  if(bad){
+    $("face").textContent="😡"; $("rType").textContent=BAD_LINE; $("rDesc").textContent="배드엔딩";
+    window._shareText="나는 배드엔딩... "+total+"점 😡\n너도 해봐: ";
+  }else{
+    const r=RESULTS.find(x=>total>=x.min);
+    $("face").textContent=""; $("rType").textContent=r.type; $("rDesc").textContent="";
+    window._shareText="순애남 테스트 "+total+"/30점. "+r.type+"\n너도 해봐: ";
+  }
+  show("result");
+}
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800)}
+$("startBtn").onclick=()=>{idx=0;total=0;show("quiz");render()};
+$("retryBtn").onclick=()=>show("start");
+$("shareBtn").onclick=async()=>{
+  const text=window._shareText+location.href;
+  try{
+    if(navigator.share){await navigator.share({text}); return;}
+  }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ await navigator.clipboard.writeText(text); toast("결과를 복사했어요"); }
+  catch(e){ toast("복사에 실패했어요. 직접 공유해 주세요"); }
+};
+</script>
+</body>
+</html>
